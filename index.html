@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FAF8F5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Reality Check">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>MTSS Reality Check Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ivory: #FAF8F5;
+    --ink: #111111;
+    --stone: #E6E2DD;
+    --stone-deep: #CFC9C2;
+    --mute: #6F6A64;
+    --emerald: #0D6E52;
+    --terra: #C84B31;
+    --emerald-wash: rgba(13,110,82,.08);
+    --terra-wash: rgba(200,75,49,.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--ivory);
+    color: var(--ink);
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ---- chrome ---- */
+  .brand {
+    position: fixed; top: 2.4rem; left: 3.2rem; z-index: 20;
+    display: flex; align-items: center; gap: .8rem;
+    font-size: 13px; font-weight: 500; letter-spacing: .02em; color: var(--ink);
+    text-decoration: none;
+  }
+  .brand img { height: 30px; width: auto; display: block; }
+  .brand img.missing { display: none; }
+  .brand .wm { white-space: nowrap; }
+  .brand .tag { color: var(--mute); font-weight: 400; margin-left: .4rem; display: none; }
+  @media (min-width: 1100px) { .brand .tag { display: inline; } }
+
+  .pill {
+    position: fixed; left: 50%; bottom: 2rem; transform: translateX(-50%); z-index: 20;
+    display: flex; gap: .25rem; padding: .3rem;
+    background: rgba(250,248,245,.82); backdrop-filter: blur(8px);
+    border: 1px solid var(--stone); border-radius: 999px;
+  }
+  .pill button {
+    font: 500 12px/1 "Inter", sans-serif; letter-spacing: .12em;
+    color: var(--mute); background: transparent; border: 0; border-radius: 999px;
+    padding: .55rem .8rem; cursor: pointer;
+  }
+  .pill button[aria-current="true"] { color: var(--ivory); background: var(--ink); }
+  .pill button:focus-visible { outline: 2px solid var(--emerald); outline-offset: 2px; }
+
+  /* ---- screens ---- */
+  .screen {
+    position: absolute; inset: 0; width: 100vw; height: 100vh; overflow: hidden;
+    display: none; padding: 0 8vw;
+    opacity: 0; transition: opacity .45s ease;
+  }
+  .screen.on { display: grid; opacity: 1; }
+  .eyebrow {
+    font-size: 14px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--mute);
+    margin: 0 0 1.6rem 0;
+  }
+  h1, h2 {
+    font-family: "Instrument Serif", "Playfair Display", Georgia, serif;
+    font-weight: 400; letter-spacing: -0.03em; line-height: 1.04; margin: 0;
+    text-wrap: balance;
+  }
+  h1 { font-size: clamp(38px, 4.3vw, 64px); max-width: 56rem; margin: 0 auto; }
+  h2 { font-size: clamp(36px, 4.6vw, 68px); }
+  .num { font-family: "JetBrains Mono", monospace; font-weight: 500; }
+  .cta {
+    display: inline-flex; align-items: center; gap: .8rem;
+    font: 500 15px/1 "Inter", sans-serif; color: var(--ivory); background: var(--ink);
+    text-decoration: none; border: 0; cursor: pointer;
+    padding: 1rem 1.5rem 1rem 1.6rem; border-radius: 999px;
+    transition: background .18s ease, transform .18s ease;
+  }
+  .cta:hover { background: var(--emerald); transform: translateY(-1px); }
+  .cta:focus-visible { outline: 3px solid var(--emerald); outline-offset: 3px; }
+  .cta svg { width: 16px; height: 16px; }
+
+  /* ---- screen 1 ---- */
+  #s1 { grid-template-rows: 1fr auto 1fr; align-items: center; justify-items: center; text-align: center; padding-top: 9vh; padding-bottom: 7vh; }
+  #s1 .top { align-self: end; max-width: 60rem; padding-bottom: 3vh; }
+  #s1 .arc { width: min(80vw, 1120px); height: auto; }
+  #s1 .bottom { align-self: start; padding-top: 4vh; }
+  .tagline { font-family: "Instrument Serif", Georgia, serif; font-style: italic; font-size: 19px; color: var(--mute); margin: 2rem 0 0; }
+  .arc .node { font: 500 13px/1 "Inter", sans-serif; letter-spacing: .06em; fill: var(--ink); }
+  .arc .ring { fill: var(--ivory); stroke: var(--stone-deep); stroke-width: 1.2; }
+  .arc .core { fill: var(--emerald); }
+  .arc .path { fill: none; stroke: var(--emerald); stroke-width: 1.6; stroke-dasharray: 1200; stroke-dashoffset: 1200; }
+  .arc.go .path { animation: draw 1.8s cubic-bezier(.65,0,.35,1) .3s forwards; }
+  .arc .spark { fill: var(--emerald); opacity: 0; offset-path: path("M 160 120 C 350 20, 450 20, 600 120 S 850 220, 1040 120"); offset-distance: 0%; }
+  .arc.go .spark { animation: travel 2.2s cubic-bezier(.65,0,.35,1) .3s forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes travel { 0% { opacity: 0; offset-distance: 0%; } 10% { opacity: 1; } 100% { opacity: 1; offset-distance: 100%; } }
+
+  /* ---- screen 2 ---- */
+  #s2 { grid-template-columns: 1.05fr 1fr; gap: 6vw; align-items: center; }
+  #s2 .tiers { width: 100%; height: auto; }
+  .tiers rect { transition: fill .6s ease, stroke .6s ease, opacity .6s ease; }
+  .tiers .t1 { fill: var(--emerald); }
+  .tiers .t2 { fill: #5FA68C; }
+  .tiers .t3 { fill: #BFDCD0; }
+  .tiers text { font-family: "Inter", sans-serif; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; fill: var(--mute); }
+  .tiers .score { font-family: "JetBrains Mono", monospace; font-size: 22px; letter-spacing: 0; text-transform: none; fill: var(--ivory); transition: fill .6s ease; }
+  .tiers .score.t3s { fill: var(--ink); }
+  .tiers .score.t2s { fill: var(--ivory); }
+  .tiers.inv .t3 { fill: var(--terra); }
+  .tiers.inv .t2 { fill: var(--stone); }
+  .tiers.inv .t1 { fill: var(--terra-wash); stroke: var(--terra); stroke-width: 1.5; stroke-dasharray: 6 6; }
+  .tiers.inv .score.t3s { fill: var(--ivory); }
+  .tiers.inv .score.t2s { fill: var(--mute); }
+  .tiers.inv .score.t1s { fill: var(--terra); }
+  .rule { width: 56px; height: 2px; background: var(--emerald); margin: 0 0 1.4rem 0; }
+  #s1 .rule, #s3 .rule { margin-left: auto; margin-right: auto; }
+  .controls { display: flex; gap: .6rem; margin-top: 2.2rem; flex-wrap: wrap; }
+  .ghost {
+    font: 500 14px/1 "Inter", sans-serif; color: var(--ink); background: transparent;
+    border: 1px solid var(--stone-deep); border-radius: 999px; padding: .85rem 1.3rem; cursor: pointer;
+    transition: border-color .18s ease, background .18s ease, color .18s ease;
+  }
+  .ghost:hover { border-color: var(--ink); }
+  .ghost[aria-pressed="true"] { background: var(--ink); color: var(--ivory); border-color: var(--ink); }
+  .ghost:focus-visible { outline: 2px solid var(--emerald); outline-offset: 2px; }
+  .reveal {
+    margin-top: 2rem; max-height: 0; overflow: hidden; opacity: 0;
+    transition: max-height .7s ease, opacity .6s ease .15s;
+  }
+  .reveal.on { max-height: 30rem; opacity: 1; }
+  .coach {
+    font-family: "Instrument Serif", Georgia, serif; font-size: clamp(22px, 2.1vw, 30px); line-height: 1.3;
+    border-left: 3px solid var(--terra); padding-left: 1.2rem; margin: 0;
+  }
+  .plan { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink); max-width: 36rem; }
+  .plan b { font-weight: 600; }
+  .plan .src { display: block; margin-top: .6rem; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--emerald); }
+
+  /* ---- screen 3 ---- */
+  #s3 { grid-template-rows: auto auto auto; align-content: center; justify-items: center; text-align: center; gap: 3rem; padding-bottom: 6vh; }
+  .card {
+    align-self: center;
+    width: min(70vw, 820px); padding: 3.2rem 3.6rem; border-radius: 28px;
+    background: var(--ivory); border: 1px solid var(--stone);
+    box-shadow: 0 30px 80px -40px rgba(17,17,17,.25);
+    transition: background .5s ease, border-color .5s ease, box-shadow .5s ease;
+  }
+  .card.paused { background: var(--terra-wash); border-color: var(--terra); box-shadow: 0 30px 90px -40px rgba(200,75,49,.45); }
+  .card.verified { background: var(--emerald-wash); border-color: var(--emerald); box-shadow: 0 30px 90px -40px rgba(13,110,82,.45); }
+  .card .fig { font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: clamp(56px, 6.5vw, 96px); letter-spacing: -0.02em; line-height: 1; }
+  .card .what { font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); margin-top: 1rem; }
+  .seg {
+    display: inline-flex; margin: 2.4rem auto 0; padding: .3rem; border-radius: 999px;
+    background: var(--stone); position: relative;
+  }
+  .seg button {
+    position: relative; z-index: 1; font: 500 13px/1 "Inter", sans-serif; letter-spacing: .08em;
+    color: var(--mute); background: transparent; border: 0; padding: .8rem 1.4rem; border-radius: 999px; cursor: pointer;
+    transition: color .3s ease;
+  }
+  .seg button[aria-pressed="true"] { color: var(--ivory); }
+  .seg .thumb {
+    position: absolute; top: .3rem; bottom: .3rem; left: .3rem; width: calc(50% - .3rem);
+    border-radius: 999px; background: var(--terra);
+    transition: transform .35s cubic-bezier(.65,0,.35,1), background .35s ease;
+  }
+  .seg.b .thumb { transform: translateX(100%); background: var(--emerald); }
+  .verdict { margin-top: 1.8rem; font-size: 15px; letter-spacing: .02em; min-height: 1.6em; }
+  .verdict.paused { color: var(--terra); }
+  .verdict.verified { color: var(--emerald); }
+  .verdict .num { font-size: 14px; }
+  .subtitle { font-size: 16px; color: var(--mute); max-width: 34rem; margin: 0; }
+
+  /* ---- screen 4 ---- */
+  #s4 { grid-template-rows: auto auto 1fr; align-content: center; gap: 3.4rem; padding-top: 10vh; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+  .tile { border: 1px solid var(--stone); border-radius: 20px; padding: 1.6rem 1.8rem; background: #fff; }
+  .tile.hot { background: var(--emerald); border-color: var(--emerald); }
+  .tile.hot .k, .tile.hot .n { color: rgba(250,248,245,.75); }
+  .tile.hot .v { color: var(--ivory); }
+  .tile .k { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); }
+  .tile .v { font-family: "JetBrains Mono", monospace; font-weight: 500; font-size: clamp(22px, 2.1vw, 32px); white-space: nowrap; color: var(--emerald); margin: .6rem 0 .3rem; letter-spacing: -0.01em; }
+  .tile .n { font-size: 13px; color: var(--mute); }
+  .partners { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; align-self: start; }
+  .partner { border: 1px solid var(--stone-deep); border-top: 4px solid var(--emerald); border-radius: 24px; padding: 1.8rem 2rem; background: #fff; }
+  .partner .k { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); margin-bottom: .8rem; }
+  .partner .name, .partner .amt {
+    width: 100%; border: 0; border-bottom: 1px solid var(--stone-deep); background: transparent; outline: none;
+    padding: .5rem 0; color: var(--ink);
+  }
+  .partner .name { font-family: "Instrument Serif", Georgia, serif; font-size: clamp(28px, 2.8vw, 40px); letter-spacing: -0.02em; }
+  .partner .amt { font-family: "JetBrains Mono", monospace; font-size: clamp(22px, 2.2vw, 32px); margin-top: .8rem; }
+  .partner .name:focus, .partner .amt:focus { border-bottom-color: var(--emerald); }
+  .partner .name::placeholder, .partner .amt::placeholder { color: var(--stone-deep); }
+  .partner .contact { margin-top: .8rem; width: 100%; border: 0; background: transparent; outline: none; font-size: 14px; color: var(--mute); padding: .3rem 0; }
+  .partner .contact::placeholder { color: var(--stone-deep); }
+  #s4 .with { font-size: 13px; color: var(--mute); letter-spacing: .02em; }
+
+
+  /* ---- v5: plan toggle (top right) ---- */
+  .plantog {
+    position: fixed; top: 2.2rem; right: 3.2rem; z-index: 20;
+    display: inline-flex; padding: .25rem; border-radius: 999px; background: var(--stone);
+  }
+  .plantog button {
+    position: relative; z-index: 1; font: 500 12px/1 "Inter", sans-serif; letter-spacing: .08em;
+    color: var(--mute); background: transparent; border: 0; padding: .6rem 1rem; border-radius: 999px; cursor: pointer;
+    transition: color .3s ease; white-space: nowrap;
+  }
+  .plantog button[aria-pressed="true"] { color: var(--ivory); }
+  .plantog .thumb {
+    position: absolute; top: .25rem; bottom: .25rem; left: .25rem; width: calc(50% - .25rem);
+    border-radius: 999px; background: var(--ink); transition: transform .35s cubic-bezier(.65,0,.35,1);
+  }
+  .plantog.u .thumb { transform: translateX(100%); }
+  .plantog:focus-within { outline: 2px solid var(--emerald); outline-offset: 2px; }
+
+  /* ---- v5: tier micro-label + legend ---- */
+  .tiers .micro { font-family: "Inter", sans-serif; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; fill: var(--mute); }
+  .tiers .legend { font-family: "Inter", sans-serif; font-size: 11px; letter-spacing: .06em; text-transform: none; fill: var(--mute); }
+
+  /* ---- v5: second-check line ---- */
+  .second { margin: 1.2rem 0 0; font-size: 15px; line-height: 1.55; color: var(--mute); max-width: 36rem; }
+  .second b { color: var(--ink); font-weight: 500; }
+
+  /* ---- v5: coaching drawer ---- */
+  .drawer {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--ivory); border-top: 1px solid var(--stone);
+    box-shadow: 0 -30px 80px -40px rgba(17,17,17,.35);
+    transform: translateY(100%); transition: transform .5s cubic-bezier(.65,0,.35,1);
+    padding: 2.2rem 8vw 2.6rem; max-height: 78vh; overflow: auto;
+  }
+  .drawer.on { transform: translateY(0); }
+  .drawer .head { display: flex; justify-content: space-between; align-items: baseline; gap: 2rem; }
+  .drawer h3 { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; letter-spacing: -0.02em; font-size: clamp(26px, 2.6vw, 38px); margin: 0 0 .4rem; }
+  .drawer .close { font: 500 13px/1 "Inter", sans-serif; background: transparent; border: 1px solid var(--stone-deep); border-radius: 999px; padding: .6rem 1rem; cursor: pointer; color: var(--ink); }
+  .drawer .grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 3vw; margin-top: 1.4rem; }
+  .prompts { display: flex; flex-direction: column; gap: .6rem; }
+  .prompt {
+    text-align: left; font: 400 15px/1.4 "Inter", sans-serif; color: var(--ink); background: #fff;
+    border: 1px solid var(--stone-deep); border-radius: 16px; padding: 1rem 1.2rem; cursor: pointer;
+    transition: border-color .18s ease, background .18s ease;
+  }
+  .prompt:hover { border-color: var(--ink); }
+  .prompt[aria-pressed="true"] { border-color: var(--emerald); background: var(--emerald-wash); }
+  .prompt small { display: block; font-size: 12px; color: var(--mute); margin-top: .3rem; }
+  .answer { border-left: 3px solid var(--emerald); padding-left: 1.4rem; min-height: 8rem; }
+  .answer .lead { font-family: "Instrument Serif", Georgia, serif; font-size: clamp(20px, 1.9vw, 26px); line-height: 1.3; margin: 0 0 1rem; }
+  .answer ol { margin: 0; padding-left: 1.2rem; font-size: 15px; line-height: 1.6; }
+  .answer li { margin-bottom: .6rem; }
+  .answer .cite { display: block; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--emerald); margin-top: .25rem; }
+  .answer .empty { color: var(--mute); font-size: 15px; }
+  .drawer .foot { display: flex; gap: .8rem; align-items: center; margin-top: 1.6rem; flex-wrap: wrap; }
+  .drawer .note { font-size: 12px; color: var(--mute); }
+  @media (max-width: 900px) { .drawer .grid { grid-template-columns: 1fr; } .plantog { top: auto; bottom: 5.4rem; right: 50%; transform: translateX(50%); } }
+
+  @media (max-width: 900px) {
+    .screen { padding: 7.5rem 6vw 7rem; overflow-y: auto; -webkit-overflow-scrolling: touch; align-content: start; }
+    #s1 { padding-top: 7.5rem; grid-template-rows: auto auto auto; }
+    #s1 .top { padding-bottom: 1rem; }
+    #s1 .arc { width: 100%; }
+    #s2.on { display: block; }
+    #s2 .tiers { display: block; max-width: 420px; margin: 2.5rem auto 0; }
+    #s3 { gap: 2rem; padding-top: 7.5rem; }
+    .card { width: 100%; padding: 2.2rem 1.4rem; }
+    .brand { top: 1.2rem; left: 6vw; }
+    .brand .tag { display: none; }
+    .plantog { top: 3.4rem; right: auto; left: 6vw; bottom: auto; transform: none; }
+    .plantog button { font-size: 11px; padding: .5rem .7rem; letter-spacing: .04em; }
+    .drawer { padding: 1.6rem 6vw 2rem; max-height: 86vh; }
+    .drawer .grid { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .screen, .reveal, .card, .seg .thumb, .tiers rect, .tiers .score { transition: none; }
+    .arc.go .path { animation: none; stroke-dashoffset: 0; }
+    .arc.go .spark { animation: none; opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<a class="brand" href="#1" aria-label="MTSS Reality Check Engine"><span class="wm">MTSS Reality Check Engine</span></a>
+
+<div class="plantog" id="plantog" role="group" aria-label="Plan vocabulary">
+  <span class="thumb"></span>
+  <button id="togCA" aria-pressed="true">California: LCAP / SPSA</button>
+  <button id="togU" aria-pressed="false">Universal: Improvement plan</button>
+</div>
+
+<!-- 01 -->
+<section class="screen" id="s1" aria-label="Screen 1">
+  <div class="top">
+    <p class="eyebrow">MTSS Reality Check Engine</p>
+    <div class="rule"></div>
+    <h1>School leaders don't need another <span style="white-space:nowrap">140-page</span> binder. They need to see where their system is thin, and fix it before Monday.</h1>
+  </div>
+  <svg class="arc" id="arc" viewBox="0 0 1200 230" aria-hidden="true">
+    <path class="path" d="M 160 120 C 350 20, 450 20, 600 120 S 850 220, 1040 120"/>
+    <circle class="spark" r="5"/>
+    <g>
+      <circle class="ring" cx="160" cy="120" r="30"/><circle class="core" cx="160" cy="120" r="6"/>
+      <text class="node" x="160" y="190" text-anchor="middle">20-ITEM LEADERSHIP REFLECTION</text>
+    </g>
+    <g>
+      <circle class="ring" cx="600" cy="120" r="30"/><circle class="core" cx="600" cy="120" r="6"/>
+      <text class="node" x="600" y="190" text-anchor="middle">LIVE TIER INVERSION MAP</text>
+    </g>
+    <g>
+      <circle class="ring" cx="1040" cy="120" r="30"/><circle class="core" cx="1040" cy="120" r="6"/>
+      <text class="node" x="1040" y="190" text-anchor="middle" data-ca="VERIFIED SPSA / LCAP LANGUAGE" data-u="VERIFIED IMPROVEMENT PLAN LANGUAGE">VERIFIED SPSA / LCAP LANGUAGE</text>
+    </g>
+  </svg>
+  <div class="bottom">
+    <a class="cta" href="#2">Step inside the live engine
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- 02 -->
+<section class="screen" id="s2" aria-label="Screen 2">
+  <div>
+    <p class="eyebrow">A 6,500-student network, five site leaders</p>
+    <div class="rule"></div>
+    <h2>When five site leaders score the same 20 items, the blind spot surfaces itself.</h2>
+    <div class="controls">
+      <button class="ghost" id="inv" aria-pressed="false">Show the inversion</button>
+      <button class="ghost" id="planbtn" aria-pressed="false">Plan language</button>
+      <button class="ghost" id="deepbtn" aria-pressed="false">Go deeper: live leadership check-in</button>
+    </div>
+    <div class="reveal" id="coachbox">
+      <p class="coach">This school is funding Tier 3 intervention to compensate for an unbuilt Tier 1 foundation.</p>
+      <p class="second"><b>The second check.</b> Compliance reviews check if a plan meets state checkboxes. This engine checks if the plan aligns with implementation science to move student outcomes.</p>
+    </div>
+    <div class="reveal" id="planbox">
+      <p class="plan"><b>Goal 1.</b> At least 80% of students meet the screening benchmark through strengthened Tier 1 core instruction by June 2027.<br>
+      <b>Action 1.1.</b> Fund one Tier 1 instructional coaching cycle from Title I professional development, with monthly walkthroughs and a Reality Check re-score in March.
+      <span class="src" data-ca="Generated from Item 01 and Item 02, Tier 1 domain. Plan: SPSA / LCAP. Sample." data-u="Generated from Item 01 and Item 02, Tier 1 domain. Plan: school improvement plan. Sample.">Generated from Item 01 and Item 02, Tier 1 domain. Plan: SPSA / LCAP. Sample.</span></p>
+    </div>
+  </div>
+  <svg class="tiers" id="tiers" viewBox="0 0 600 430" aria-hidden="true">
+    <rect class="t t3" x="200" y="40"  width="200" height="80" rx="22"/>
+    <rect class="t t2" x="110" y="160" width="380" height="80" rx="22"/>
+    <rect class="t t1" x="20"  y="280" width="560" height="80" rx="22"/>
+    <text x="300" y="150" text-anchor="middle">Tier 3 intensive</text>
+    <text x="300" y="270" text-anchor="middle">Tier 2 targeted</text>
+    <text x="300" y="395" text-anchor="middle">Tier 1 core</text>
+    <text class="score t3s" x="300" y="88" text-anchor="middle">5.4 / 6</text>
+    <text class="score t2s" x="300" y="208" text-anchor="middle">3.9 / 6</text>
+    <text class="score t1s" x="300" y="328" text-anchor="middle">2.1 / 6</text>
+    <text class="micro" x="300" y="12" text-anchor="middle">Average of 5 site leaders &nbsp;|&nbsp; 1-to-6 scale</text>
+    <text class="legend" x="300" y="418" text-anchor="middle">Darker means stronger. Sample values.</text>
+  </svg>
+</section>
+
+<!-- 03 -->
+<section class="screen" id="s3" aria-label="Screen 3">
+  <div><div class="rule"></div>
+  <h2>Every figure points to a real page, or the engine stops.</h2></div>
+  <div>
+    <div class="card" id="card">
+      <div class="fig">$412,000</div>
+      <div class="what">Title I professional development allocation (sample figure)</div>
+      <div class="seg" id="seg">
+        <span class="thumb"></span>
+        <button id="segA" aria-pressed="true">Unverified input</button>
+        <button id="segB" aria-pressed="false">Verified source</button>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+  </div>
+  <p class="subtitle">A system district cabinet leaders can sign their name to with certainty.</p>
+</section>
+
+
+
+<!-- v5: live leadership coaching assistant -->
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="head">
+    <div>
+      <h3>Live leadership check-in</h3>
+      <div class="note">Pick the thing in front of you. The answer is anchored to your own plan page and the implementation-science centers. Sample content.</div>
+    </div>
+    <button class="close" id="drawerclose">Close</button>
+  </div>
+  <div class="grid">
+    <div class="prompts" id="prompts">
+      <button class="prompt" data-k="a" aria-pressed="false">Staff pushback on Tier 1 core changes before Monday's meeting<small>Instructional leadership, Tier 1 domain</small></button>
+      <button class="prompt" data-k="b" aria-pressed="false">Our data team met, and nobody can say what we decided<small>Data-based decision making</small></button>
+      <button class="prompt" data-k="c" aria-pressed="false">Tier 2 waitlist is growing faster than we can staff it<small>Timely and targeted support</small></button>
+    </div>
+    <div class="answer" id="answer"><p class="empty">Choose a prompt on the left.</p></div>
+  </div>
+  <div class="foot">
+    <button class="cta" id="deckbtn">Export 5-slide colleague briefing deck
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+    <span class="note">Opens a print-ready deck in a new tab. Nothing leaves this browser.</span>
+  </div>
+</div>
+
+<nav class="pill" aria-label="Screens">
+  <button data-n="1">01</button>
+  <button data-n="2">02</button>
+  <button data-n="3">03</button>
+</nav>
+
+<script>
+(function () {
+  var N = 3;
+  var screens = [1,2,3].map(function (i) { return document.getElementById('s' + i); });
+  var pills = Array.prototype.slice.call(document.querySelectorAll('.pill button'));
+  var current = 0;
+
+  function show(n, push) {
+    n = Math.max(1, Math.min(N, n));
+    screens.forEach(function (s, i) { s.classList.toggle('on', i === n - 1); });
+    pills.forEach(function (b, i) { b.setAttribute('aria-current', i === n - 1 ? 'true' : 'false'); });
+    current = n;
+    if (push !== false && location.hash !== '#' + n) history.replaceState(null, '', '#' + n);
+    if (n === 1) { var a = document.getElementById('arc'); a.classList.remove('go'); void a.offsetWidth; a.classList.add('go'); }
+  }
+  pills.forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.n); }); });
+  document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+    a.addEventListener('click', function (e) { var n = +a.getAttribute('href').slice(1); if (n) { e.preventDefault(); show(n); } });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(current + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(current - 1); }
+    if (e.key >= '1' && e.key <= '3') show(+e.key);
+  });
+  window.addEventListener('hashchange', function () { show(+location.hash.slice(1) || 1, false); });
+  show(Math.min(3, +location.hash.slice(1) || 1), false);
+
+
+  // v5: plan vocabulary toggle
+  var tog = document.getElementById('plantog'), togCA = document.getElementById('togCA'), togU = document.getElementById('togU');
+  function setPlan(u) {
+    tog.classList.toggle('u', u);
+    togCA.setAttribute('aria-pressed', !u); togU.setAttribute('aria-pressed', u);
+    document.querySelectorAll('[data-ca]').forEach(function (el) {
+      var v = u ? el.getAttribute('data-u') : el.getAttribute('data-ca');
+      if (el.tagName.toLowerCase() === 'text') el.textContent = v; else el.innerHTML = v;
+    });
+    try { localStorage.setItem('v5.plan', u ? 'u' : 'ca'); } catch (e) {}
+  }
+  togCA.addEventListener('click', function () { setPlan(false); });
+  togU.addEventListener('click', function () { setPlan(true); });
+  var savedPlan = null; try { savedPlan = localStorage.getItem('v5.plan'); } catch (e) {}
+  setPlan(savedPlan === 'u');
+  document.addEventListener('keydown', function (e) { if (e.key === 'u' || e.key === 'U') setPlan(!tog.classList.contains('u')); });
+
+  // v5: coaching drawer
+  var drawer = document.getElementById('drawer'), deepbtn = document.getElementById('deepbtn'), answer = document.getElementById('answer');
+  var prompts = Array.prototype.slice.call(document.querySelectorAll('.prompt'));
+  var planName = function () { return tog.classList.contains('u') ? 'improvement plan' : 'LCAP'; };
+  var RESP = {
+    a: { lead: 'Lead with the number they already own, not the change you want.',
+         items: [
+           ['Open with the screening read: fewer than half of students at benchmark. That is the case for Tier 1, and it is theirs, not yours.', 'Your plan, Goal 1, p. 12 (sample)'],
+           ['Name one routine, not five: a shared core instructional routine walked monthly. Ask the room to pick it.', 'Center on PBIS; AIR Center on MTSS'],
+           ['Close with what changes Monday and what does not. Pushback drops when the scope is one thing with a date.', 'NIRN, implementation drivers: leadership']
+         ] },
+    b: { lead: 'A data meeting without a decision rule is a conversation.',
+         items: [
+           ['Write the decision rule first: at what screening cut does a student move, and who signs it. Put it on page one of the data protocol.', 'Your plan, Action 2.1, p. 18 (sample)'],
+           ['Run the next meeting on one question: would two teams looking at the same data make the same call? If not, fix the rule, not the people.', 'NCII, data-based individualization'],
+           ['Protect the time: data-team minutes are LCFF supplemental and concentration, so budget the release time in the plan.', 'Your plan, budget table, p. 31 (sample)']
+         ] },
+    c: { lead: 'A growing Tier 2 list is a Tier 1 signal.',
+         items: [
+           ['Check the load: more than 20 percent of students in Tier 2 or 3 means the core is carrying too little. Say that out loud before adding staff.', 'AIR Center on MTSS; MiMTSS'],
+           ['Cap Tier 2 entry on the written rule and review every eight weeks; students who are not responding move, students who are exit.', 'NCII; Center on PBIS'],
+           ['Redirect one Tier 2 position to Tier 1 coaching for one cycle and re-score the Reality Check in March.', 'Your plan, Action 1.1, p. 14 (sample)']
+         ] }
+  };
+  var currentK = null;
+  function render(k) {
+    currentK = k;
+    var r = RESP[k];
+    var html = '<p class="lead">' + r.lead + '</p><ol>';
+    r.items.forEach(function (it) { html += '<li>' + it[0] + '<span class="cite">' + it[1].replace('LCAP', planName()) + '</span></li>'; });
+    html += '</ol>';
+    answer.innerHTML = html;
+    prompts.forEach(function (p) { p.setAttribute('aria-pressed', p.dataset.k === k ? 'true' : 'false'); });
+  }
+  prompts.forEach(function (p) { p.addEventListener('click', function () { render(p.dataset.k); }); });
+  function openDrawer(on) {
+    drawer.classList.toggle('on', on); drawer.setAttribute('aria-hidden', !on);
+    deepbtn.setAttribute('aria-pressed', on);
+    if (on && !currentK) render('a');
+  }
+  deepbtn.addEventListener('click', function () { openDrawer(!drawer.classList.contains('on')); });
+  document.getElementById('drawerclose').addEventListener('click', function () { openDrawer(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') openDrawer(false); });
+
+  // v5: 5-slide colleague briefing deck (print-ready, opens in a new tab)
+  document.getElementById('deckbtn').addEventListener('click', function () {
+    var k = currentK || 'a', r = RESP[k], plan = planName();
+    var promptText = document.querySelector('.prompt[data-k="' + k + '"]').childNodes[0].textContent;
+    var slides = [
+      ['Where our system is thin', 'Five site leaders, same 20 items, 1-to-6 scale. Tier 3 intensive 5.4. Tier 2 targeted 3.9. Tier 1 core 2.1. The system is carrying Tier 3 intervention on a Tier 1 foundation that is not yet built.'],
+      ['The question in front of us', promptText],
+      ['The move', r.lead + ' ' + r.items[0][0] + ' (' + r.items[0][1].replace('LCAP', plan) + ')'],
+      ['What the evidence says', r.items[1][0] + ' (' + r.items[1][1].replace('LCAP', plan) + ') ' + r.items[2][0] + ' (' + r.items[2][1].replace('LCAP', plan) + ')'],
+      ['What changes Monday', 'One routine, one owner, one date. Re-score the Reality Check in March. Every figure in our ' + plan + ' points to a page, or it does not ship.']
+    ];
+    var w = window.open('', '_blank');
+    if (!w) { alert('Allow pop-ups to export the deck.'); return; }
+    var h = '<!doctype html><html><head><meta charset="utf-8"><title>Colleague briefing deck</title><style>'
+      + 'body{margin:0;font-family:Inter,system-ui,sans-serif;background:#FAF8F5;color:#111}'
+      + '.s{height:100vh;box-sizing:border-box;padding:9vh 10vw;display:flex;flex-direction:column;justify-content:center;page-break-after:always;border-bottom:1px solid #E6E2DD}'
+      + '.n{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6F6A64;margin-bottom:1.2rem}'
+      + 'h1{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:clamp(34px,5vw,64px);letter-spacing:-.03em;line-height:1.05;margin:0 0 1.4rem}'
+      + 'p{font-size:clamp(17px,1.7vw,22px);line-height:1.5;max-width:60ch;margin:0}'
+      + '.f{font-size:12px;color:#6F6A64;margin-top:auto}'
+      + '@media print{.s{height:auto;min-height:95vh}}'
+      + '</style><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;500&display=swap" rel="stylesheet"></head><body>';
+    slides.forEach(function (s, i) {
+      h += '<section class="s"><div class="n">Slide ' + (i + 1) + ' of 5 &nbsp;|&nbsp; MTSS Reality Check Engine &nbsp;|&nbsp; sample content</div><h1>' + s[0] + '</h1><p>' + s[1] + '</p><div class="f">Reflection and discussion tool. Not for accountability, evaluation or compliance. Every figure cites a page in your own plan.</div></section>';
+    });
+    h += '<script>setTimeout(function(){window.print()},600)<\/script></body></html>';
+    w.document.open(); w.document.write(h); w.document.close();
+  });
+
+
+  // screen 2
+  var inv = document.getElementById('inv'), planbtn = document.getElementById('planbtn');
+  var tiers = document.getElementById('tiers'), coachbox = document.getElementById('coachbox'), planbox = document.getElementById('planbox');
+  inv.addEventListener('click', function () {
+    var on = inv.getAttribute('aria-pressed') !== 'true';
+    inv.setAttribute('aria-pressed', on);
+    tiers.classList.toggle('inv', on);
+    coachbox.classList.toggle('on', on);
+    if (!on) { planbtn.setAttribute('aria-pressed', 'false'); planbox.classList.remove('on'); }
+  });
+  planbtn.addEventListener('click', function () {
+    var on = planbtn.getAttribute('aria-pressed') !== 'true';
+    if (on && inv.getAttribute('aria-pressed') !== 'true') inv.click();
+    planbtn.setAttribute('aria-pressed', on);
+    planbox.classList.toggle('on', on);
+  });
+
+  // screen 3
+  var seg = document.getElementById('seg'), card = document.getElementById('card'), verdict = document.getElementById('verdict');
+  var A = document.getElementById('segA'), B = document.getElementById('segB');
+  function state(b) {
+    seg.classList.toggle('b', b);
+    A.setAttribute('aria-pressed', !b); B.setAttribute('aria-pressed', b);
+    card.className = 'card ' + (b ? 'verified' : 'paused');
+    verdict.className = 'verdict ' + (b ? 'verified' : 'paused');
+    verdict.innerHTML = b
+      ? 'Verified: <span class="num">LCAP 2025-26, page 37, line 12</span> (sample citation).'
+      : 'Paused: no source page attached.';
+  }
+  A.addEventListener('click', function () { state(false); });
+  B.addEventListener('click', function () { state(true); });
+  state(false);
+
+})();
+</script>
+</body>
+</html>
